@@ -33,6 +33,10 @@
 #define EPD_WIDTH       128
 #define EPD_HEIGHT      296
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 class Epd : EpdIf {
 public:
     unsigned long width;
@@ -77,6 +81,10 @@ private:
     void SetMemoryArea(int x_start, int y_start, int x_end, int y_end);
     void SetMemoryPointer(int x, int y);
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* EPD2IN9_V2_H */
 
