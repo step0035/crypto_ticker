@@ -1,9 +1,9 @@
 /**
- *  @filename   :   epd2in9.cpp
+ *  @filename   :   epd2in9_V2.cpp
  *  @brief      :   Implements for e-paper library
- *  @author     :   Yehui from Waveshare
+ *  @author     :  
  *
- *  Copyright (C) Waveshare     September 9 2017
+ *  Copyright (C) Waveshare     Nov 9 2020
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documnetation files (the "Software"), to deal
@@ -25,7 +25,53 @@
  */
 
 #include <stdlib.h>
-#include "epd2in9.h"
+#include "epd2in9_V2.h"
+
+unsigned char _WF_PARTIAL_2IN9[159] =
+{
+0x0,0x40,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+0x80,0x80,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+0x40,0x40,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+0x0,0x80,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+0x0A,0x0,0x0,0x0,0x0,0x0,0x2,  
+0x1,0x0,0x0,0x0,0x0,0x0,0x0,
+0x1,0x0,0x0,0x0,0x0,0x0,0x0,
+0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+0x22,0x22,0x22,0x22,0x22,0x22,0x0,0x0,0x0,
+0x22,0x17,0x41,0xB0,0x32,0x36,
+};
+
+unsigned char WS_20_30[159] =
+{											
+0x80,	0x66,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x40,	0x0,	0x0,	0x0,
+0x10,	0x66,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x20,	0x0,	0x0,	0x0,
+0x80,	0x66,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x40,	0x0,	0x0,	0x0,
+0x10,	0x66,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x20,	0x0,	0x0,	0x0,
+0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,
+0x14,	0x8,	0x0,	0x0,	0x0,	0x0,	0x1,					
+0xA,	0xA,	0x0,	0xA,	0xA,	0x0,	0x1,					
+0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,					
+0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,					
+0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,					
+0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,					
+0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,					
+0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,					
+0x14,	0x8,	0x0,	0x1,	0x0,	0x0,	0x1,					
+0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x1,					
+0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,					
+0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,					
+0x44,	0x44,	0x44,	0x44,	0x44,	0x44,	0x0,	0x0,	0x0,			
+0x22,	0x17,	0x41,	0x0,	0x32,	0x36
+};	
 
 Epd::~Epd() {
 };
@@ -39,31 +85,37 @@ Epd::Epd() {
     height = EPD_HEIGHT;
 };
 
-int Epd::Init(const unsigned char* lut) {
+int Epd::Init() {
     /* this calls the peripheral hardware interface, see epdif */
     if (IfInit() != 0) {
         return -1;
     }
+	
+	Reset();
+	
     /* EPD hardware init start */
-    this->lut = lut;
-    Reset();
-    SendCommand(DRIVER_OUTPUT_CONTROL);
-    SendData((EPD_HEIGHT - 1) & 0xFF);
-    SendData(((EPD_HEIGHT - 1) >> 8) & 0xFF);
-    SendData(0x00);                     // GD = 0; SM = 0; TB = 0;
-    SendCommand(BOOSTER_SOFT_START_CONTROL);
-    SendData(0xD7);
-    SendData(0xD6);
-    SendData(0x9D);
-    SendCommand(WRITE_VCOM_REGISTER);
-    SendData(0xA8);                     // VCOM 7C
-    SendCommand(SET_DUMMY_LINE_PERIOD);
-    SendData(0x1A);                     // 4 dummy lines per gate
-    SendCommand(SET_GATE_TIME);
-    SendData(0x08);                     // 2us per line
-    SendCommand(DATA_ENTRY_MODE_SETTING);
-    SendData(0x03);                     // X increment; Y increment
-    SetLut(this->lut);
+	WaitUntilIdle();   
+	SendCommand(0x12);  //SWRESET
+	WaitUntilIdle();   
+	
+	SendCommand(0x01); //Driver output control      
+	SendData(0x27);
+	SendData(0x01);
+	SendData(0x00);
+	
+	SendCommand(0x11); //data entry mode       
+	SendData(0x03);
+
+	SetMemoryArea(0, 0, width-1, height-1);
+
+	SendCommand(0x21); //  Display update control
+	SendData(0x00);
+	SendData(0x80);	
+
+	SetMemoryPointer(0, 0);
+	WaitUntilIdle();
+
+    SetLut_by_host(WS_20_30);
     /* EPD hardware init end */
     return 0;
 }
@@ -73,7 +125,9 @@ int Epd::Init(const unsigned char* lut) {
  */
 void Epd::SendCommand(unsigned char command) {
     DigitalWrite(dc_pin, LOW);
+    DigitalWrite(cs_pin, LOW);
     SpiTransfer(command);
+    DigitalWrite(cs_pin, HIGH);
 }
 
 /**
@@ -81,16 +135,21 @@ void Epd::SendCommand(unsigned char command) {
  */
 void Epd::SendData(unsigned char data) {
     DigitalWrite(dc_pin, HIGH);
+    DigitalWrite(cs_pin, LOW);
     SpiTransfer(data);
+    DigitalWrite(cs_pin, HIGH);
 }
 
 /**
  *  @brief: Wait until the busy_pin goes LOW
  */
 void Epd::WaitUntilIdle(void) {
-    while(DigitalRead(busy_pin) == HIGH) {      //LOW: idle, HIGH: busy
-        DelayMs(100);
-    }      
+	while(1) {	 //=1 BUSY
+		if(DigitalRead(busy_pin)==LOW) 
+			break;
+		DelayMs(5);
+	}
+	DelayMs(5);
 }
 
 /**
@@ -99,22 +158,12 @@ void Epd::WaitUntilIdle(void) {
  *          see Epd::Sleep();
  */
 void Epd::Reset(void) {
-    DigitalWrite(reset_pin, LOW);                //module reset    
-    DelayMs(200);
     DigitalWrite(reset_pin, HIGH);
-    DelayMs(200);    
-}
-
-/**
- *  @brief: set the look-up table register
- */
-void Epd::SetLut(const unsigned char* lut) {
-    this->lut = lut;
-    SendCommand(WRITE_LUT_REGISTER);
-    /* the length of look-up table is 30 bytes */
-    for (int i = 0; i < 30; i++) {
-        SendData(this->lut[i]);
-    }
+    DelayMs(20);  
+    DigitalWrite(reset_pin, LOW);                //module reset    
+    DelayMs(5);
+    DigitalWrite(reset_pin, HIGH); 
+    DelayMs(20);  
 }
 
 /**
@@ -153,7 +202,74 @@ void Epd::SetFrameMemory(
     }
     SetMemoryArea(x, y, x_end, y_end);
     SetMemoryPointer(x, y);
-    SendCommand(WRITE_RAM);
+    SendCommand(0x24);
+    /* send the image data */
+    for (int j = 0; j < y_end - y + 1; j++) {
+        for (int i = 0; i < (x_end - x + 1) / 8; i++) {
+            SendData(image_buffer[i + j * (image_width / 8)]);
+        }
+    }
+}
+void Epd::SetFrameMemory_Partial(
+    const unsigned char* image_buffer,
+    int x,
+    int y,
+    int image_width,
+    int image_height
+) {
+    int x_end;
+    int y_end;
+
+    if (
+        image_buffer == NULL ||
+        x < 0 || image_width < 0 ||
+        y < 0 || image_height < 0
+    ) {
+        return;
+    }
+    /* x point must be the multiple of 8 or the last 3 bits will be ignored */
+    x &= 0xF8;
+    image_width &= 0xF8;
+    if (x + image_width >= this->width) {
+        x_end = this->width - 1;
+    } else {
+        x_end = x + image_width - 1;
+    }
+    if (y + image_height >= this->height) {
+        y_end = this->height - 1;
+    } else {
+        y_end = y + image_height - 1;
+    }
+
+    DigitalWrite(reset_pin, LOW);
+    DelayMs(2);
+    DigitalWrite(reset_pin, HIGH);
+    DelayMs(2);
+	
+	SetLut(_WF_PARTIAL_2IN9);
+	SendCommand(0x37); 
+	SendData(0x00);  
+	SendData(0x00);  
+	SendData(0x00);  
+	SendData(0x00); 
+	SendData(0x00);  	
+	SendData(0x40);  
+	SendData(0x00);  
+	SendData(0x00);   
+	SendData(0x00);  
+	SendData(0x00);
+
+	SendCommand(0x3C); //BorderWavefrom
+	SendData(0x80);	
+
+	SendCommand(0x22); 
+	SendData(0xC0);   
+	SendCommand(0x20); 
+	WaitUntilIdle();  
+	
+    SetMemoryArea(x, y, x_end, y_end);
+    SetMemoryPointer(x, y);
+    SendCommand(0x24);
     /* send the image data */
     for (int j = 0; j < y_end - y + 1; j++) {
         for (int i = 0; i < (x_end - x + 1) / 8; i++) {
@@ -182,7 +298,21 @@ void Epd::SetFrameMemory(
 void Epd::SetFrameMemory(const unsigned char* image_buffer) {
     SetMemoryArea(0, 0, this->width - 1, this->height - 1);
     SetMemoryPointer(0, 0);
-    SendCommand(WRITE_RAM);
+    SendCommand(0x24);
+    /* send the image data */
+    for (int i = 0; i < this->width / 8 * this->height; i++) {
+        SendData(pgm_read_byte(&image_buffer[i]));
+    }
+}
+void Epd::SetFrameMemory_Base(const unsigned char* image_buffer) {
+    SetMemoryArea(0, 0, this->width - 1, this->height - 1);
+    SetMemoryPointer(0, 0);
+    SendCommand(0x24);
+    /* send the image data */
+    for (int i = 0; i < this->width / 8 * this->height; i++) {
+        SendData(pgm_read_byte(&image_buffer[i]));
+    }
+    SendCommand(0x26);
     /* send the image data */
     for (int i = 0; i < this->width / 8 * this->height; i++) {
         SendData(pgm_read_byte(&image_buffer[i]));
@@ -196,7 +326,7 @@ void Epd::SetFrameMemory(const unsigned char* image_buffer) {
 void Epd::ClearFrameMemory(unsigned char color) {
     SetMemoryArea(0, 0, this->width - 1, this->height - 1);
     SetMemoryPointer(0, 0);
-    SendCommand(WRITE_RAM);
+    SendCommand(0x24);
     /* send the color data */
     for (int i = 0; i < this->width / 8 * this->height; i++) {
         SendData(color);
@@ -211,22 +341,50 @@ void Epd::ClearFrameMemory(unsigned char color) {
  *          set the other memory area.
  */
 void Epd::DisplayFrame(void) {
-    SendCommand(DISPLAY_UPDATE_CONTROL_2);
-    SendData(0xC4);
-    SendCommand(MASTER_ACTIVATION);
-    SendCommand(TERMINATE_FRAME_READ_WRITE);
+    SendCommand(0x22);
+    SendData(0xc7);
+    SendCommand(0x20);
     WaitUntilIdle();
+}
+
+void Epd::DisplayFrame_Partial(void) {
+    SendCommand(0x22);
+    SendData(0x0F);
+    SendCommand(0x20);
+    WaitUntilIdle();
+}
+
+void Epd::SetLut(unsigned char *lut) {       
+	unsigned char count;
+	SendCommand(0x32);
+	for(count=0; count<153; count++) 
+		SendData(lut[count]); 
+	WaitUntilIdle();
+}
+
+void Epd::SetLut_by_host(unsigned char *lut) {
+    SetLut((unsigned char *)lut);
+	SendCommand(0x3f);
+	SendData(*(lut+153));
+	SendCommand(0x03);	// gate voltage
+	SendData(*(lut+154));
+	SendCommand(0x04);	// source voltage
+	SendData(*(lut+155));	// VSH
+	SendData(*(lut+156));	// VSH2
+	SendData(*(lut+157));	// VSL
+	SendCommand(0x2c);		// VCOM
+	SendData(*(lut+158));
 }
 
 /**
  *  @brief: private function to specify the memory area for data R/W
  */
 void Epd::SetMemoryArea(int x_start, int y_start, int x_end, int y_end) {
-    SendCommand(SET_RAM_X_ADDRESS_START_END_POSITION);
+    SendCommand(0x44);
     /* x point must be the multiple of 8 or the last 3 bits will be ignored */
     SendData((x_start >> 3) & 0xFF);
     SendData((x_end >> 3) & 0xFF);
-    SendCommand(SET_RAM_Y_ADDRESS_START_END_POSITION);
+    SendCommand(0x45);
     SendData(y_start & 0xFF);
     SendData((y_start >> 8) & 0xFF);
     SendData(y_end & 0xFF);
@@ -237,10 +395,10 @@ void Epd::SetMemoryArea(int x_start, int y_start, int x_end, int y_end) {
  *  @brief: private function to specify the start point for data R/W
  */
 void Epd::SetMemoryPointer(int x, int y) {
-    SendCommand(SET_RAM_X_ADDRESS_COUNTER);
+    SendCommand(0x4E);
     /* x point must be the multiple of 8 or the last 3 bits will be ignored */
     SendData((x >> 3) & 0xFF);
-    SendCommand(SET_RAM_Y_ADDRESS_COUNTER);
+    SendCommand(0x4F);
     SendData(y & 0xFF);
     SendData((y >> 8) & 0xFF);
     WaitUntilIdle();
@@ -253,26 +411,9 @@ void Epd::SetMemoryPointer(int x, int y) {
  *          You can use Epd::Init() to awaken
  */
 void Epd::Sleep() {
-    SendCommand(DEEP_SLEEP_MODE);
-	SendData(0x01);
+    SendCommand(0x10);
+    SendData(0x01);
     // WaitUntilIdle();
 }
-
-const unsigned char lut_full_update[] = {
-    0x50, 0xAA, 0x55, 0xAA, 0x11, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0xFF, 0xFF, 0x1F, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
-
-const unsigned char lut_partial_update[] = {
-    0x10, 0x18, 0x18, 0x08, 0x18, 0x18,
-    0x08, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x13, 0x14, 0x44, 0x12,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
-
 
 /* END OF FILE */
