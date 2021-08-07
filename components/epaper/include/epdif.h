@@ -28,13 +28,28 @@
 #ifndef EPDIF_H
 #define EPDIF_H
 
-#include <Arduino.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_system.h"
+#include "driver/spi_master.h"
+#include "soc/gpio_struct.h"
+#include "driver/gpio.h"
 
 // Pin definition
-#define RST_PIN         8
-#define DC_PIN          9
-#define CS_PIN          10
-#define BUSY_PIN        7
+#define MOSI_PIN  CONFIG_MOSI_PIN
+#define CLK_PIN   CONFIG_CLK_PIN
+#define CS_PIN    CONFIG_CS_PIN
+#define DC_PIN    CONFIG_DC_PIN
+#define RST_PIN   CONFIG_RST_PIN
+#define BUSY_PIN  CONFIG_BUSY_PIN
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 class EpdIf {
 public:
@@ -47,5 +62,9 @@ public:
     static void DelayMs(unsigned int delaytime);
     static void SpiTransfer(unsigned char data);
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
