@@ -85,9 +85,9 @@ Epd::Epd() {
     height = EPD_HEIGHT;
 };
 
-int Epd::Init() {
+int Epd::Init(int flag) {
     /* this calls the peripheral hardware interface, see epdif */
-    if (IfInit() != 0) {
+    if (IfInit(flag) != 0) {
         return -1;
     }
 	

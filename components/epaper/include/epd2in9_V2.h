@@ -47,7 +47,7 @@ public:
 
     Epd();
     ~Epd();
-    int  Init();
+    int  Init(int);
     void SendCommand(unsigned char command);
     void SendData(unsigned char data);
     void WaitUntilIdle(void);
