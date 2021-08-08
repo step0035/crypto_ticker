@@ -66,10 +66,10 @@ void EpdIf::SpiTransfer(unsigned char data) {
 
 int EpdIf::IfInit(void) {
     
-    if(spi) {
-		spi_bus_remove_device(spi);
-	}
-	spi_bus_free(VSPI_HOST);
+    //if(spi) {
+		//spi_bus_remove_device(spi);
+	//}
+	//spi_bus_free(VSPI_HOST);
     
     gpio_config_t io_conf = {0};
     io_conf.intr_type = GPIO_INTR_DISABLE;

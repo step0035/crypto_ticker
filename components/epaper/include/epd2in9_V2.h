@@ -33,6 +33,9 @@
 #define EPD_WIDTH       128
 #define EPD_HEIGHT      296
 
+#define HIGH	1
+#define LOW	0
+
 #ifdef __cplusplus
 extern "C" {
 #endif

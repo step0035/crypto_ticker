@@ -1,0 +1,4 @@
+source "/home/stephen/Projects/waveshare_epaper/esp-idf/components/app_update/Kconfig.projbuild"
+source "/home/stephen/Projects/waveshare_epaper/esp-idf/components/bootloader/Kconfig.projbuild"
+source "/home/stephen/Projects/waveshare_epaper/esp-idf/components/esptool_py/Kconfig.projbuild"
+source "/home/stephen/Projects/waveshare_epaper/esp-idf/components/partition_table/Kconfig.projbuild"

@@ -301,7 +301,7 @@ void Epd::SetFrameMemory(const unsigned char* image_buffer) {
     SendCommand(0x24);
     /* send the image data */
     for (int i = 0; i < this->width / 8 * this->height; i++) {
-        SendData(pgm_read_byte(&image_buffer[i]));
+        SendData(image_buffer[i]);
     }
 }
 void Epd::SetFrameMemory_Base(const unsigned char* image_buffer) {
@@ -310,12 +310,12 @@ void Epd::SetFrameMemory_Base(const unsigned char* image_buffer) {
     SendCommand(0x24);
     /* send the image data */
     for (int i = 0; i < this->width / 8 * this->height; i++) {
-        SendData(pgm_read_byte(&image_buffer[i]));
+        SendData(image_buffer[i]);
     }
     SendCommand(0x26);
     /* send the image data */
     for (int i = 0; i < this->width / 8 * this->height; i++) {
-        SendData(pgm_read_byte(&image_buffer[i]));
+        SendData(image_buffer[i]);
     }
 }
 
