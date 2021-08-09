@@ -3,7 +3,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/timer.h"
-#include "imagedata.h"
+//#include "imagedata.h"
+#include "testimage.h"
 
 #define COLORED     0
 #define UNCOLORED   1
@@ -60,7 +61,8 @@ void epaper_display_task(void *pvParameter) {
 		epd.DisplayFrame();
 
 		vTaskDelay(5000 / portTICK_RATE_MS);
-		epd.SetFrameMemory_Base(IMAGE_DATA);
+		//epd.SetFrameMemory_Base(IMAGE_DATA_TEST);
+		epd.SetFrameMemory(IMAGE_DATA_TEST);
 		epd.DisplayFrame();
 
 		epd.Sleep();
