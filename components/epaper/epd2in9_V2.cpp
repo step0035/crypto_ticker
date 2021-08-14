@@ -85,16 +85,17 @@ Epd::Epd() {
     height = EPD_HEIGHT;
 };
 
-int Epd::Init(int flag) {
+int Epd::Init(void) {
     /* this calls the peripheral hardware interface, see epdif */
-    if (IfInit(flag) != 0) {
+    if (IfInit() != 0) {
         return -1;
     }
-	
+
 	Reset();
 	
     /* EPD hardware init start */
 	WaitUntilIdle();   
+    ESP_LOGE("Init", "Waiting for busy pin to go low");
 	SendCommand(0x12);  //SWRESET
 	WaitUntilIdle();   
 	
