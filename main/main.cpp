@@ -12,13 +12,11 @@
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_netif.h"
+#include "esp_sleep.h"
 #include "nvs_flash.h"
 #include "protocol_examples_common.h"
 #include "driver/timer.h"
-
-//#include "imagedata.h"
-//#include "testimage.h"
-#include "btc_image.h"
+#include "driver/rtc_io.h"
 
 #include "lwip/err.h"
 #include "lwip/sockets.h"
@@ -28,6 +26,9 @@
 
 #include "esp_tls.h"
 #include "esp_crt_bundle.h"
+
+#include "btc_image.h"
+#include "eth_image.h"
 
 #include "cJSON.h"
 
@@ -214,9 +215,11 @@ void epaper_display_task(void *pvParameter) {
 
         // Set Cryptocurrency logo
 		epd.SetFrameMemory_Base(epd_bitmap_btc);
+		//epd.SetFrameMemory_Base(epd_bitmap_eth);
 
         paint.SetRotate(ROTATE_90);
         
+#if 0
         // Set Cryptocurrency title 
 		paint.SetWidth(16);
 		paint.SetHeight(200);
@@ -224,6 +227,7 @@ void epaper_display_task(void *pvParameter) {
 		paint.Clear(UNCOLORED);
 		paint.DrawStringAt(0, 4, "Bitcoin", &Font16, COLORED);
 		epd.SetFrameMemory(paint.GetImage(), 5, 5, paint.GetWidth(), paint.GetHeight());
+#endif
 
         // Set Cryptocurrency price heading
 		paint.SetWidth(18);
@@ -270,7 +274,7 @@ void epaper_display_task(void *pvParameter) {
 		epd.SetFrameMemory(paint.GetImage(), 9, 120, paint.GetWidth(), paint.GetHeight());
 
         // Set Last updated 
-        time_t time = crypto_data.last_updated_at;
+        time_t time = crypto_data.last_updated_at + (60 * 60 * 8); // GMT +8
         struct tm ts;
         char time_buf[40];
         char disp_time[80] = "Updated: ";
@@ -293,8 +297,16 @@ void epaper_display_task(void *pvParameter) {
         memset(disp_time, 0, sizeof(disp_time));
         ESP_LOGI(TAG, "Going to sleep...");
 		//epd.Sleep();
-		vTaskDelay(10000 / portTICK_RATE_MS);
-		// maybe use vTaskSuspend in the future
+		//vTaskDelay(10000 / portTICK_RATE_MS);
+		// maybe use vTaskSuspend in the future or use deep sleep mode
+        
+        // Enter deep sleep mode
+        esp_wifi_stop(); // disabling wifi
+        ESP_LOGI(TAG, "Enabling timer wakeup, 20 seconds");
+        esp_sleep_enable_timer_wakeup(20 * 1000000); // in microseconds
+        rtc_gpio_isolate(GPIO_NUM_12);  // minimize current consumption
+        ESP_LOGI(TAG, "Entering deep sleep");
+        esp_deep_sleep_start(); 
 	}
 	free(image);
 
