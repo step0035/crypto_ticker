@@ -36,4 +36,9 @@ config BUSY_PIN
     help
         set the pin to be connected to busy pin of display
 
+config CHANGE_CURR_PIN
+    int "Change Currency Pin number"
+    default 2
+    help
+        set the pin to change the displayed currency
 endmenu
