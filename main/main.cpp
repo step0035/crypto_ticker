@@ -27,6 +27,7 @@
 #define UNCOLORED   1
 
 static const char *TAG = "Crypto Ticker";
+static RTC_DATA_ATTR int wakeup_index = 0;
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,7 +41,7 @@ void epaper_display_task(void *pvParameter) {
     char string_24hr_change[20];
     char disp_usd[30];
     char disp_24hr_change[30];
-    char crypto_id[20] = "bitcoin";
+    //char crypto_id[20] = "bitcoin";
     char disp_usd_heading[20] = "USD PRICE:";
     char disp_24hr_change_heading[20] = "24HR CHANGE:";
 	unsigned char* image = (unsigned char*)malloc(epd.width * epd.height / 8);
@@ -52,7 +53,8 @@ void epaper_display_task(void *pvParameter) {
         ESP_LOGI(TAG, "init done");
 		epd.ClearFrameMemory(0xFF);   // bit set = white, bit reset = black
 
-        crypto_data = https_get_request(crypto_id);
+        https_get_request();
+        crypto_data = crypto_data_arr[wakeup_index];
 
         // Set Cryptocurrency logo
 		epd.SetFrameMemory_Base(epd_bitmap_btc);
@@ -133,7 +135,8 @@ void epaper_display_task(void *pvParameter) {
         ESP_LOGI(TAG, "Disabling wifi to prepare for deep sleep");
         esp_wifi_stop(); // disabling wifi
         ESP_LOGI(TAG, "Enabling timer wakeup, 20 seconds");
-        esp_sleep_enable_timer_wakeup(20 * 1000000); // in microseconds
+        esp_sleep_enable_timer_wakeup(20 * 1000000); // enable wakeup by timer in microseconds
+        esp_sleep_enable_ext0_wakeup(GPIO_NUM_33, 1);   // enable wakeup by gpio HIGH
         rtc_gpio_isolate(GPIO_NUM_12);  // minimize current consumption
         ESP_LOGI(TAG, "Entering deep sleep");
         esp_deep_sleep_start(); 
@@ -143,6 +146,15 @@ void epaper_display_task(void *pvParameter) {
 }
 
 void app_main() {
+    int wakeup_cause;
+    wakeup_cause = esp_sleep_get_wakeup_cause();    // Check if wakeup caused by rtc_gpio interrupt 
+    ESP_LOGW(TAG, "wakeup_cause: %d", wakeup_cause);
+
+    if (wakeup_cause == ESP_SLEEP_WAKEUP_EXT0) {
+        wakeup_index++;
+    }
+    ESP_LOGW(TAG, "wakeup_index: %d", wakeup_index);
+
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());

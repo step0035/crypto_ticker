@@ -1,12 +1,13 @@
-#include <https_request.h>
 #include <stdint.h>
 #include <string.h>
 #include "esp_log.h"
 #include "esp_tls.h"
 #include "esp_crt_bundle.h"
 #include "cJSON.h"
+#include "https_request.h"
 
 static const char *TAG = "https request";
+CRYPTO_DATA crypto_data_arr[10];
 
 char* ExtractJson(char *pcBuffer) {
     //  EMPTY?
@@ -49,8 +50,7 @@ char* ExtractJson(char *pcBuffer) {
     return pcBuffer;
 }
 
-CRYPTO_DATA https_get_request(char *crypto_id)
-{
+void https_get_request() {
     char buf[1024];
     int ret, len, response_size;
     char *full_response;
@@ -128,17 +128,18 @@ CRYPTO_DATA https_get_request(char *crypto_id)
     json = ExtractJson(full_response);
     ESP_LOGE(TAG, "%s", json);
     root = cJSON_Parse(json);
-    crypto = cJSON_GetObjectItem(root, crypto_id);
-    crypto_data.price = cJSON_GetObjectItem(crypto, "usd")->valuedouble;
-    crypto_data.change_24h = cJSON_GetObjectItem(crypto, "usd_24h_change")->valuedouble;
-    crypto_data.last_updated_at = cJSON_GetObjectItem(crypto, "last_updated_at")->valuedouble;
-
-    ESP_LOGI(TAG, "Value of %s: $%.2f", crypto_id, crypto_data.price);
+    
+    for (int id=0; id<10; id++) {
+        crypto = cJSON_GetObjectItem(root, crypto_list[id]);
+        crypto_data.price = cJSON_GetObjectItem(crypto, "usd")->valuedouble;
+        crypto_data.change_24h = cJSON_GetObjectItem(crypto, "usd_24h_change")->valuedouble;
+        crypto_data.last_updated_at = cJSON_GetObjectItem(crypto, "last_updated_at")->valuedouble;
+        crypto_data_arr[id] = crypto_data;
+    }
     free(full_response);
 
 exit:
     esp_tls_conn_delete(tls);
-    return crypto_data;
 }
 
 
