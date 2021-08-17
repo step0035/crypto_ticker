@@ -1,14 +1,15 @@
 #include <string.h>
 #include <stdlib.h>
-#include <time.h>
 
-#include "https_request.h"
-
+#include "crypto.h"
+#include "helper.h"
 #include "epaper.h"
+
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "freertos/semphr.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
@@ -17,117 +18,36 @@
 #include "esp_sleep.h"
 #include "nvs_flash.h"
 #include "protocol_examples_common.h"
+#include "driver/gpio.h"
 #include "driver/timer.h"
 #include "driver/rtc_io.h"
 
 #include "btc_image.h"
 #include "eth_image.h"
 
-#define COLORED     0
-#define UNCOLORED   1
-
 static const char *TAG = "Crypto Ticker";
-static RTC_DATA_ATTR int wakeup_index = 0;
+static volatile RTC_DATA_ATTR int wakeup_index = 0;
+CRYPTO_DATA crypto_data;
+SemaphoreHandle_t xSemaphore = NULL;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 void epaper_display_task(void *pvParameter) {
-	Epd epd;
-    //double usd_price;
-    CRYPTO_DATA crypto_data;
-    char string_usd[20];
-    char string_24hr_change[20];
-    char disp_usd[30];
-    char disp_24hr_change[30];
-    //char crypto_id[20] = "bitcoin";
-    char disp_usd_heading[20] = "USD PRICE:";
-    char disp_24hr_change_heading[20] = "24HR CHANGE:";
-	unsigned char* image = (unsigned char*)malloc(epd.width * epd.height / 8);
-	Paint paint(image, 0, 0);
-	//int flag = 0;
-
 	while(1) {
-		epd.Init();		// init or wakeup
-        ESP_LOGI(TAG, "init done");
-		epd.ClearFrameMemory(0xFF);   // bit set = white, bit reset = black
-
         https_get_request();
         crypto_data = crypto_data_arr[wakeup_index];
 
-        // Set Cryptocurrency logo
-		epd.SetFrameMemory_Base(epd_bitmap_btc);
-		//epd.SetFrameMemory_Base(epd_bitmap_eth);
+        SetOrientation();
+        SetBackground(wakeup_index);
+        SetPriceHeading();
+        SetPrice(crypto_data);
+        Set24hHeading();
+        Set24hChange(crypto_data);
+        SetLastUpdated(crypto_data);
+        UpdateDisplay();
 
-        paint.SetRotate(ROTATE_90);
-        
-        // Set Cryptocurrency price heading
-		paint.SetWidth(18);
-		paint.SetHeight(160);
-
-		paint.Clear(UNCOLORED);
-		paint.DrawStringAt(0, 4, disp_usd_heading, &Font16, COLORED);
-		epd.SetFrameMemory(paint.GetImage(), 86, 120, paint.GetWidth(), paint.GetHeight());
-
-        // Set Cryptocurrency price
-        sprintf(string_usd, "%.2f", crypto_data.price);
-        sprintf(disp_usd, "$");
-        strcat(disp_usd, string_usd);
-
-		paint.SetWidth(24);
-		paint.SetHeight(200);
-
-		paint.Clear(UNCOLORED);
-		paint.DrawStringAt(0, 4, disp_usd, &Font24, COLORED);
-		epd.SetFrameMemory(paint.GetImage(), 64, 120, paint.GetWidth(), paint.GetHeight());
-
-        // Set 24hr change heading
-		paint.SetWidth(18);
-		paint.SetHeight(160);
-
-		paint.Clear(UNCOLORED);
-		paint.DrawStringAt(0, 4, disp_24hr_change_heading, &Font16, COLORED);
-		epd.SetFrameMemory(paint.GetImage(), 31, 120, paint.GetWidth(), paint.GetHeight());
-
-        // Set 24hr change 
-        sprintf(string_24hr_change, "%.2f", crypto_data.change_24h);
-        if((double) crypto_data.change_24h > 0)
-            sprintf(disp_24hr_change, "+");
-        else 
-            disp_24hr_change[0] = 0;
-        strcat(disp_24hr_change, string_24hr_change);
-        strcat(disp_24hr_change, "%");
-        
-		paint.SetWidth(24);
-		paint.SetHeight(200);
-
-		paint.Clear(UNCOLORED);
-		paint.DrawStringAt(0, 4, disp_24hr_change, &Font24, COLORED);
-		epd.SetFrameMemory(paint.GetImage(), 9, 120, paint.GetWidth(), paint.GetHeight());
-
-        // Set Last updated 
-        time_t time = crypto_data.last_updated_at + (60 * 60 * 8); // GMT +8
-        struct tm ts;
-        char time_buf[40];
-        char disp_time[80] = "Updated: ";
-        ts = *localtime(&time);
-        strftime(time_buf, sizeof(time_buf), "%a %Y-%m-%d %H:%M:%S", &ts);
-        ESP_LOGW(TAG, "%s", time_buf);
-        strcat(disp_time, time_buf);
-
-		paint.SetWidth(14);
-		paint.SetHeight(250);
-
-		paint.Clear(UNCOLORED);
-		paint.DrawStringAt(0, 4, disp_time, &Font12, COLORED);
-		epd.SetFrameMemory(paint.GetImage(), 114, 5, paint.GetWidth(), paint.GetHeight());
-
-        // Update the display
-		epd.DisplayFrame();
-        memset(disp_usd, 0, sizeof(disp_usd));
-        memset(disp_24hr_change, 0, sizeof(disp_24hr_change));
-        memset(disp_time, 0, sizeof(disp_time));
         ESP_LOGI(TAG, "Going to sleep...");
 		//epd.Sleep();
         
@@ -141,18 +61,86 @@ void epaper_display_task(void *pvParameter) {
         ESP_LOGI(TAG, "Entering deep sleep");
         esp_deep_sleep_start(); 
 	}
-	free(image);
+    DeInit();
+}
 
+void intr_update_display(void *args) {
+    while(1) {
+        if (xSemaphoreTake(xSemaphore, (TickType_t) 10)) {
+            wakeup_index++;
+            wakeup_index %= 10;
+            ESP_LOGI("Button Interrupt", "Button interrupt handler");
+            crypto_data = crypto_data_arr[wakeup_index];
+
+            SetOrientation();
+            SetBackground(wakeup_index);
+            SetPriceHeading();
+            SetPrice(crypto_data);
+            Set24hHeading();
+            Set24hChange(crypto_data);
+            SetLastUpdated(crypto_data);
+            UpdateDisplay();
+        }
+    }
+}
+
+static void IRAM_ATTR gpio_button_isr_handler(void* arg) {
+    gpio_intr_disable(GPIO_NUM_33);
+    //vTaskDelay(20 / portTICK_RATE_MS);
+    xSemaphoreGiveFromISR(xSemaphore, NULL);
+    gpio_intr_enable(GPIO_NUM_33);
 }
 
 void app_main() {
+    Init();
+    xSemaphore = xSemaphoreCreateBinary();
+    // Initialize interrupt gpio
+    ESP_LOGI(TAG, "TEST1");
+    gpio_config_t intr_conf = {0};
+    ESP_LOGI(TAG, "TEST2");
+    intr_conf.intr_type = GPIO_INTR_POSEDGE;
+    ESP_LOGI(TAG, "TEST3");
+    intr_conf.mode = GPIO_MODE_INPUT;
+    ESP_LOGI(TAG, "TEST4");
+    intr_conf.pin_bit_mask = (1ULL<<GPIO_NUM_33);
+    ESP_LOGI(TAG, "TEST5");
+    //intr_conf.pull_down_en = GPIO_PULLDOWN_ENABLE;
+    ESP_LOGI(TAG, "TEST6");
+    ESP_ERROR_CHECK(gpio_config(&intr_conf));
+    ESP_LOGI(TAG, "TEST7");
+    gpio_isr_register(gpio_button_isr_handler, NULL, ESP_INTR_FLAG_LEVEL1, NULL);
+#if 0
+    gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1);
+    ESP_LOGI(TAG, "TEST8");
+    gpio_isr_handler_add(GPIO_NUM_33, gpio_button_isr_handler, NULL);
+    ESP_LOGI(TAG, "TEST9");
+#endif
+
     int wakeup_cause;
     wakeup_cause = esp_sleep_get_wakeup_cause();    // Check if wakeup caused by rtc_gpio interrupt 
     ESP_LOGW(TAG, "wakeup_cause: %d", wakeup_cause);
 
     if (wakeup_cause == ESP_SLEEP_WAKEUP_EXT0) {
         wakeup_index++;
+        wakeup_index %= 10;
+        crypto_data = crypto_data_arr[wakeup_index];
+
+        SetOrientation();
+        SetBackground(wakeup_index);
+        SetPriceHeading();
+        SetPrice(crypto_data);
+        Set24hHeading();
+        Set24hChange(crypto_data);
+        SetLastUpdated(crypto_data);
+        UpdateDisplay();
+
+        esp_sleep_enable_timer_wakeup(20 * 1000000); // enable wakeup by timer in microseconds
+        esp_sleep_enable_ext0_wakeup(GPIO_NUM_33, 1);   // enable wakeup by gpio HIGH
+        rtc_gpio_isolate(GPIO_NUM_12);  // minimize current consumption
+        ESP_LOGI(TAG, "Entering deep sleep");
+        esp_deep_sleep_start(); 
     }
+
     ESP_LOGW(TAG, "wakeup_index: %d", wakeup_index);
 
     ESP_ERROR_CHECK(nvs_flash_init());
@@ -166,7 +154,8 @@ void app_main() {
     ESP_ERROR_CHECK(example_connect());
 
     // Tasks to schedule
-	xTaskCreate(&epaper_display_task, "epaper_display_task", 8192, NULL, 10, NULL);
+	xTaskCreate(&epaper_display_task, "epaper_display_task", 8192, NULL, 5, NULL);
+	xTaskCreatePinnedToCore(&intr_update_display, "interrupt update display", 2048, NULL, 10, NULL, 1);
 }
 
 #ifdef __cplusplus

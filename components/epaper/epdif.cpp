@@ -70,7 +70,8 @@ int EpdIf::IfInit(void) {
 		spi_bus_remove_device(spi);
 	    spi_bus_free(HSPI_HOST);
 	} 
-
+    
+    // Initialize output gpio
     gpio_config_t io_conf = {0};
     io_conf.intr_type = GPIO_INTR_DISABLE;
     io_conf.mode = GPIO_MODE_OUTPUT;
@@ -79,6 +80,7 @@ int EpdIf::IfInit(void) {
     io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
     ESP_ERROR_CHECK(gpio_config(&io_conf));
 
+    // Initialize input gpio
     gpio_config_t i_conf = {0};
     i_conf.intr_type = GPIO_INTR_DISABLE;
     i_conf.mode = GPIO_MODE_INPUT;
@@ -86,7 +88,7 @@ int EpdIf::IfInit(void) {
     i_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
     i_conf.pull_up_en = GPIO_PULLUP_DISABLE;
     ESP_ERROR_CHECK(gpio_config(&i_conf));
-
+    
     esp_err_t ret;
 
     spi_bus_config_t buscfg = {0};
