@@ -7,7 +7,7 @@
 #include "crypto.h"
 
 static const char *TAG = "https request";
-RTC_DATA_ATTR CRYPTO_DATA crypto_data_arr[10];
+CRYPTO_DATA crypto_data_arr[10];
 
 char* ExtractJson(char *pcBuffer) {
     //  EMPTY?
@@ -52,12 +52,14 @@ char* ExtractJson(char *pcBuffer) {
 
 void https_get_request() {
     char buf[1024];
-    int ret, len, response_size;
-    char *full_response;
+    int ret, len;
+    //char *full_response;
     size_t written_bytes = 0;
     static char *json;
     CRYPTO_DATA crypto_data;
     cJSON *root, *crypto;
+    char full_response[2048];
+    full_response[0] = 0;
 
     ESP_LOGI(TAG, "https_request using crt bundle");
     esp_tls_cfg_t cfg = {
@@ -82,15 +84,13 @@ void https_get_request() {
             written_bytes += ret;
         } else if (ret != ESP_TLS_ERR_SSL_WANT_READ  && ret != ESP_TLS_ERR_SSL_WANT_WRITE) {
             ESP_LOGE(TAG, "esp_tls_conn_write  returned: [0x%02X](%s)", ret, esp_err_to_name(ret));
-            goto exit;
+           goto exit;
         }
     } while (written_bytes < sizeof(REQUEST));
 
     ESP_LOGI(TAG, "Reading HTTP response...");
 
-    response_size = 2048;
-    full_response = (char *) malloc(response_size);
-    full_response[0] = 0;
+    //full_response = (char *) malloc(response_size);
 
     do {
         len = sizeof(buf) - 1;
@@ -114,12 +114,15 @@ void https_get_request() {
         len = ret;
         ESP_LOGD(TAG, "%d bytes read", len);
 
+#if 0
     while(strlen(buf) + strlen(full_response) >= response_size - 1) {
         printf("0\r\n");
         realloc(full_response, response_size + 512);
         printf("1\r\n");
         response_size += 512;
     }
+#endif
+
     printf("2\r\n");
     strcat(full_response, buf);
 
@@ -136,10 +139,12 @@ void https_get_request() {
         crypto_data.last_updated_at = cJSON_GetObjectItem(crypto, "last_updated_at")->valuedouble;
         crypto_data_arr[id] = crypto_data;
     }
-    free(full_response);
+    //free(full_response);
+    cJSON_Delete(root);
 
 exit:
-    esp_tls_conn_delete(tls);
+    ESP_LOGW(TAG, "Destroying tls connecton");
+    esp_tls_conn_destroy(tls);
 }
 
 

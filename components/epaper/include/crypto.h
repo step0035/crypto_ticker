@@ -13,7 +13,7 @@ typedef struct {
 
 extern CRYPTO_DATA crypto_data_arr[10];
 
-const char crypto_list[][20] {
+const char crypto_list[][20] = {
     "bitcoin",
     "ethereum",
     "cardano",

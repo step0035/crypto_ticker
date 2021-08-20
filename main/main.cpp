@@ -4,6 +4,7 @@
 #include "crypto.h"
 #include "helper.h"
 #include "epaper.h"
+#include "wifi_manager.h"
 
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -38,7 +39,8 @@ extern "C" {
 void epaper_display_task(void *pvParameter) {
 	while(1) {
         ESP_LOGI(TAG, "epaper_display_task");
-        vTaskSuspend(intrTaskHandle);
+        //vTaskSuspend(intrTaskHandle);
+        gpio_intr_disable(GPIO_NUM_33);
         https_get_request();
 
         crypto_data = crypto_data_arr[list_id];
@@ -53,10 +55,12 @@ void epaper_display_task(void *pvParameter) {
         UpdateDisplay();
         ESP_LOGI(TAG, "Updated EPD");
 
-        vTaskResume(intrTaskHandle);
+        //vTaskResume(intrTaskHandle);
+        gpio_intr_enable(GPIO_NUM_33);
 
         ESP_LOGI(TAG, "Delay");
-        vTaskDelay(20000 / portTICK_RATE_MS);
+        vTaskDelay(5 * 60 * 1000 / portTICK_RATE_MS);
+        //vTaskDelay( 20000 / portTICK_RATE_MS);
 	}
     DeInit();
 }
@@ -83,12 +87,21 @@ void intr_update_display(void *args) {
 }
 
 static void gpio_button_isr_handler(void* arg) {
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     gpio_intr_disable(GPIO_NUM_33);
-    //vTaskDelay(20 / portTICK_RATE_MS);
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     xSemaphoreGiveFromISR(xSemaphore_intr, &xHigherPriorityTaskWoken);
     gpio_intr_enable(GPIO_NUM_33);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+}
+
+void cb_connection_ok(void *args) {
+    ip_event_got_ip_t *param = (ip_event_got_ip_t*)args;
+    char str_ip[16];
+    esp_ip4addr_ntoa(&param->ip_info.ip, str_ip, IP4ADDR_STRLEN_MAX);
+    ESP_LOGI(TAG, "Connection established, IP: %s", str_ip);
+    vTaskDelay(5000 / portTICK_RATE_MS);
+    vTaskResume(epdTaskHandle);
+    vTaskResume(intrTaskHandle);
 }
 
 void app_main() {
@@ -109,19 +122,23 @@ void app_main() {
 
     ESP_LOGW(TAG, "list_id: %d", list_id);
 
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    wifi_manager_start();
+    wifi_manager_set_callback(WM_EVENT_STA_GOT_IP, &cb_connection_ok);
+    //ESP_ERROR_CHECK(nvs_flash_init());
+    //ESP_ERROR_CHECK(esp_netif_init());
+    //ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     /* Helper function to configure wifi or ethernet, as selected in menuconfig.
      * Read "Establishing Wi-Fi or Ethernet Connection" section in
      * examples/protocols/README.md for more information about this function.
      */
-    ESP_ERROR_CHECK(example_connect());
+    //ESP_ERROR_CHECK(example_connect());
 
     // Tasks to schedule
 	xTaskCreate(epaper_display_task, "epaper_display_task", 8192, NULL, 7, &epdTaskHandle);
 	xTaskCreate(intr_update_display, "interrupt update display", 2048, NULL, 9, &intrTaskHandle);
+    vTaskSuspend(epdTaskHandle);
+    vTaskSuspend(intrTaskHandle);
 }
 
 #ifdef __cplusplus
