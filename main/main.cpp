@@ -4,7 +4,7 @@
 #include "crypto.h"
 #include "helper.h"
 #include "epaper.h"
-#include "wifi_manager.h"
+#include "ap_server.h"
 
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -18,7 +18,7 @@
 #include "esp_netif.h"
 #include "esp_sleep.h"
 #include "nvs_flash.h"
-#include "protocol_examples_common.h"
+//#include "protocol_examples_common.h"
 #include "driver/gpio.h"
 #include "driver/timer.h"
 #include "driver/rtc_io.h"
@@ -94,7 +94,7 @@ static void gpio_button_isr_handler(void* arg) {
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
-void cb_connection_ok(void *args) {
+void cb_connection_ok(void *args) { // delete this later, need reference for task suspension/resume
     ip_event_got_ip_t *param = (ip_event_got_ip_t*)args;
     char str_ip[16];
     esp_ip4addr_ntoa(&param->ip_info.ip, str_ip, IP4ADDR_STRLEN_MAX);
@@ -122,17 +122,8 @@ void app_main() {
 
     ESP_LOGW(TAG, "list_id: %d", list_id);
 
-    wifi_manager_start();
-    wifi_manager_set_callback(WM_EVENT_STA_GOT_IP, &cb_connection_ok);
-    //ESP_ERROR_CHECK(nvs_flash_init());
-    //ESP_ERROR_CHECK(esp_netif_init());
-    //ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    /* Helper function to configure wifi or ethernet, as selected in menuconfig.
-     * Read "Establishing Wi-Fi or Ethernet Connection" section in
-     * examples/protocols/README.md for more information about this function.
-     */
-    //ESP_ERROR_CHECK(example_connect());
+    // Start softAP server if not connected to wifi AP
+    ap_server_start();
 
     // Tasks to schedule
 	xTaskCreate(epaper_display_task, "epaper_display_task", 8192, NULL, 7, &epdTaskHandle);
