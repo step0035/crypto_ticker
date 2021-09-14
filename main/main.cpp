@@ -127,8 +127,8 @@ void app_main() {
 
     // Tasks to schedule
 	xTaskCreate(epaper_display_task, "epaper_display_task", 8192, NULL, 7, &epdTaskHandle);
-	xTaskCreate(intr_update_display, "interrupt update display", 2048, NULL, 9, &intrTaskHandle);
     vTaskSuspend(epdTaskHandle);
+	xTaskCreate(intr_update_display, "interrupt update display", 2048, NULL, 9, &intrTaskHandle);
     vTaskSuspend(intrTaskHandle);
 }
 

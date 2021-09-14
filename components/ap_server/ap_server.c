@@ -37,22 +37,26 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STACONNECTED)
     {
+        ESP_LOGI(TAG, "WIFI_EVENT_AP_STACONNECTED");
         wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *)event_data;
         ESP_LOGI(TAG, "station " MACSTR " join, AID=%d",
                  MAC2STR(event->mac), event->aid);
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STADISCONNECTED)
     {
+        ESP_LOGI(TAG, "WIFI_EVENT_AP_STADISCONNECTED");
         wifi_event_ap_stadisconnected_t *event = (wifi_event_ap_stadisconnected_t *)event_data;
         ESP_LOGI(TAG, "station " MACSTR " leave, AID=%d",
                  MAC2STR(event->mac), event->aid);
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        ESP_LOGI(TAG, "WIFI_EVENT_AP_STA_START");
         ESP_LOGI(TAG, "Starting wifi");
-        esp_wifi_connect();
+        ESP_LOGI(TAG, "esp_wifi_connect: %d", esp_wifi_connect());
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        ESP_LOGI(TAG, "SYSTEM_EVENT_STA_DISCONNECTED %d ", esp_wifi_connect());
+        ESP_LOGI(TAG, "WIFI_EVENT_STA_DISCONNECTED");
+        //ESP_LOGI(TAG, "SYSTEM_EVENT_STA_DISCONNECTED %d ", esp_wifi_connect());
         esp_wifi_connect();
         if (GOT_IP == false)
         {
@@ -65,7 +69,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
         xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
     } 
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        ESP_LOGI(TAG, "SYSTEM_EVENT_STA_GOT_IP ");
+        ESP_LOGI(TAG, "IP_EVENT_STA_GOT_IP ");
         ESP_LOGI(TAG, "Login Success");
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
@@ -73,7 +77,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
         xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
     }
 
-    ESP_LOGI(TAG, "wifi_event_handler wifi_event_handler wifi_event_handler");
+    ESP_LOGI(TAG, "End of wifi_event_handler");
 }
 
 static esp_err_t servePage_get_handler(httpd_req_t *req)
